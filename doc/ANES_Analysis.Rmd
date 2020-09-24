@@ -1,0 +1,202 @@
+---
+title: "Economy v.s. Covid-19"
+author: "Mengyao He"
+date: "9/22/2020"
+output: pdf_document
+---
+```{r load libraries, warning=FALSE, message=FALSE, include=FALSE}
+packages.used=as.list(
+  c(
+  "tidyverse",
+  "haven",
+  "devtools",
+  "RColorBrewer",
+  "data.table",
+  "ggplot2",
+  "knitr")
+)
+
+check.pkg = function(x){
+  if(!require(x, character.only=T)) install.packages(x, 
+                                                     character.only=T,
+                                                     dependence=T)
+}
+
+lapply(packages.used, check.pkg)
+
+```
+
+```{r import dataset, include=FALSE}
+anes_dat <-read_dta("../data/anes_pilot_2020ets_dta.dta")
+```
+
+```{r data processing, , include=FALSE}
+anes_use <- anes_dat %>% mutate(as_factor(vote16), as_factor(protest), 
+                    as_factor(vote20jb), as_factor(vote20bs), as_factor(apppres7),
+                    as_factor(frnpres7), as_factor(immpres7), as_factor(econpres7), 
+                    covidpres7, as_factor(healthcarepres7), 
+                    as_factor(dtleader1), as_factor(dtleader2),  as_factor(econnow), 
+                    as_factor(confecon), as_factor(taxecon),  as_factor(freemkt2),  
+                    as_factor(freemkt3), as_factor(govsize1a),  as_factor(leastgrp), 
+                    as_factor(hlthcare2), as_factor(covid1),  as_factor(covid2),  
+                    as_factor(mis_covid1), as_factor(conf_covid1), as_factor(mis_covid2),
+                    as_factor(conf_covid2), as_factor(impeach1), as_factor(impeach2),
+                    as_factor(inc_anes), as_factor(inc_cpsmod), as_factor(covid_elect))
+
+anes_use = anes_use %>% select(vote16, protest, 
+                    vote20jb, vote20bs, apppres7,
+                    econpres7, covidpres7, healthcarepres7, 
+                    dtleader1, dtleader2, econnow,
+                    confecon, taxecon,
+                    hlthcare2, covid1, covid2, covid_elect,
+                    impeach1, impeach2,
+                    inc_anes, inc_cpsmod)
+
+anes_use <- as.data.frame(anes_use)
+write.csv(anes_use,"anes_use.csv")
+
+```
+
+```{r reopen graph, echo=FALSE, fig.cap="A caption", out.width = '100%'}
+knitr::include_graphics("../figs/reopen.jpg")
+
+```
+
+
+From the past 6 months news, it's easy to notice that a majority of Americans are very worried about the American economy. From the ANES survey, as many as 89.3 percent of Americans said they were concerned about the impact the coronavirus would have on the economy. And 69.8 percent of Americans said they were “extremely” or “very” worried that the coronavirus would negatively impact the economy. Moreover, 67.2 percent of Americans showed that they were concerned about getting Covid-19. 
+
+```{r, include=FALSE}
+covid2 = count(anes_use,covid2)
+cumsum(covid2$n/sum(covid2$n)*100) # percentage of people who worried about economy
+
+covid1 = count(anes_use,covid1)
+cumsum(covid1$n/sum(covid1$n)*100) # percentage of people who worried about getting Covid-19
+```
+
+```{r, echo=FALSE, out.width = "60%", fig.align='center'}
+ggplot(count(anes_use,covid1),aes(x=as.factor(covid1), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title="How People Worried Wbout Getting Covid-19")
+
+ggplot(count(anes_use,covid2), aes(x=as.factor(covid2), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "How People Worried About Economic Impact of Covid-19")
+
+```
+
+We all know that the lockdown policy raised a storm of protest across the county. The scientific evidence suggests large scale activity will increase the risk of Covid-19 infection. However, people still went to the street and asked for reopening. Therefore, it seems that Americans are not very concerned about Covid-19, and seems it's easy for people to conclude that economy and Covid-19 are a trade-off. But in reality, don't those who worried about the economy care about the risk of Covid-19? 
+
+\newpage
+# In General
+I grouped by the people's attitudes of the economy and count the number of people for their attitude of Covid-19. The result is really interesting, it against the assumption that I assumed that Americans who cared more about the economy didn't care so much about the risk of Covid-19, and Americans who care less about the economy are more care about the risk of Covid-19. Instead, the result showed that most Americans who were concerned about the economy were also concerned about the Covid-19, and those who didn't think the economy could be a problem didn't worried about Covid-19. Then I calculated the correlation between these two features, and it gave a positive correlation with 0.433.  
+
+```{r econ covid table, echo=FALSE}
+# People who are worried econ, what's their attitude about covid
+econ_covid <- anes_use %>% group_by(covid2) %>% count(covid1)
+covid2_num <- count(anes_use, covid2)[,'n']
+econ_covid$p <- econ_covid$n/rep(covid2_num,c(6,5,5,5,5,2))
+colnames(econ_covid) <- c("Econ", "Covid", "Numbers", "Proportion")
+kable(econ_covid, caption = "People who are worried econ, what's their attitude about covid")
+
+```
+
+
+```{r econ_worried_more, echo=FALSE, out.width = "60%", fig.align='center'}
+econ_worried_more <- anes_use[(anes_use$covid2 == 1) | (anes_use$covid2 == 2),] 
+ggplot(count(econ_worried_more,covid1),aes(x=as.factor(covid1), y=n/sum(n)))+
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "Covid attitude of people who are more worried about economy")
+```
+
+```{r econ_worried_less, echo=FALSE, out.width = "60%", fig.align='center'}
+econ_worried_less <- anes_use[(anes_use$covid2 == 4) | 
+                         (anes_use$covid2 == 5),] 
+ggplot(count(econ_worried_less,covid1),aes(x=as.factor(covid1), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "Covid attitude of people who are less worried about economy")
+
+```
+
+```{r correlation, include=FALSE}
+cor(anes_use$covid2, anes_use$covid1)
+```
+
+# Policy Preference
+For Americans who are concerned about the economy, they hope to reopen and let them back to work instead of lock the country down the country. It seems that Trump's policies fit their ideas. What's their attitude toward Trump? From the results, it shows similar shares of Republicans and Democrats are concerned about the Covid-19's impact on the economy. Besides, it showed that a majority of people do not satisfy with Trump's president work.
+```{r are they Trumpy, echo=FALSE}
+# ggplot(count(econ_worried_more,vote16),aes(x=as.factor(vote16), y=n/sum(n)))+ 
+#   geom_bar(stat="identity")+
+#   labs(y= "Frequency", x = "Choices")
+
+vote16 <- econ_worried_more %>% count(vote16)
+vote16$p <- vote16$n/sum(vote16$n)
+colnames(vote16) <- c("Choices","Numbers","Proportion")
+kable(vote16, caption = "Vote in 2016")
+
+vote20jb <- econ_worried_more %>% count(vote20jb)
+vote20jb$p <- vote20jb$n/sum(vote20jb$n)
+colnames(vote20jb) <- c("Choices","Numbers","Proportion")
+kable(vote20jb, caption = "Trump v.s. Biden")
+
+vote20bs <- econ_worried_more %>% count(vote20bs)
+vote20bs$p <- vote20bs$n/sum(vote20bs$n)
+colnames(vote20bs) <- c("Choices","Numbers","Proportion")
+kable(vote20bs, caption = "Trump v.s. Sanders")
+
+# ggplot(count(econ_worried_more,vote20jb),aes(x=as.factor(vote20jb), y=n/sum(n)))+ 
+#   geom_bar(stat="identity")+
+#   labs(y= "Frequency", x = "Choices")
+# 
+# ggplot(count(econ_worried_more,vote20bs),aes(x=as.factor(vote20bs), y=n/sum(n)))+ 
+#   geom_bar(stat="identity")+
+#   labs(y= "Frequency", x = "Choices")
+
+```
+
+```{r Trump policy, echo=FALSE, out.width = "60%", fig.align='center'}
+econ_worried_more_clean = econ_worried_more[econ_worried_more$covidpres7 != 88,]
+ggplot(count(econ_worried_more_clean, covidpres7),aes(x=as.factor(covidpres7), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "How people think Trump's work with Covid")
+
+ggplot(count(econ_worried_more,econpres7),aes(x=as.factor(econpres7), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "How people think Trump's work with economy")
+
+ggplot(count(econ_worried_more,apppres7),aes(x=as.factor(apppres7), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "How people think Trump's work in general")
+
+```
+
+
+
+# Protestor's Attitudes
+Here, I assumed that people who attended protests last 12 months also attended some protests for reopening. It showed that protestors were also really concerned about Covid-19, even those who were extremely worried about the economy.
+
+```{r, echo=FALSE, out.width = "60%", fig.align='center'}
+protester <- anes_use[anes_use$protest == 1,] 
+ggplot(count(protester,covid2),aes(x=as.factor(covid2), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "Covid attitude of protester")
+
+```
+
+
+```{r, echo=FALSE, out.width = "60%", fig.align='center'}
+protester <- anes_use[(anes_use$protest == 1) & (anes_use$covid2 == 1),] 
+ggplot(count(protester,covid1),aes(x=as.factor(covid1), y=n/sum(n)))+ 
+  geom_bar(stat="identity")+
+  labs(y= "Frequency", x = "Choices", title = "Covid attitude of protester with extremely concerning about economy")
+
+```
+
+# Conclusion
+1. Americans who are worried about the economy are also worried about coronavirus.
+2. A majority of Americans who are worried about the economy don't satisfy with Trump's work.
+3. Protesters are also worried about coronavirus.
+
+# Discussion
+Americans are worried about the economy. At the same time, they are worried about coronavirus. Why did this happen? This summer, I participated in a design challenge about reducing inequity in a world shaped by COVID-19. During this time, I and my teammates spread some online surveys and talked with many essential workers. We asked them what the problems are they faced, all of them mentioned financial issues. A cashier told us that her mother was infected and her family didn't have any income for two weeks at that time. She needed money to survive, so she worried about Covid-19 but was more worried about the economy. Also, a man who worked in a grocery store said that the company he worked at didn't provide any effective measures to protect them and the majority of customers were not willing to wear a mask. He's very scared but he was concerned more about unemployment. If he lost this job, then he won't have the money to pay for the rent. There are many stories like this and this might be the reason why people have this kind of thought and request for reopening. These people are worried about coronavirus, but obviously, financial issues are more deadly for them.
+
+However, there are some issues with this report. The survey contains many missing values which could cause some biases. Also, for the protestor part, the assumption I made will cause some problems since not all people who attend protests in the past 12 months went to a protest that asked for reopening. 
